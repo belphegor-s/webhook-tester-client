@@ -160,7 +160,7 @@ const App = () => {
     if (selectedWebhook) {
       const interval = setInterval(() => {
         fetchWebhookRequests(selectedWebhook.id, false);
-      }, 1000);
+      }, 5 * 1000);
 
       return () => clearInterval(interval);
     }

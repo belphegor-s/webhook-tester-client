@@ -35,8 +35,10 @@ const App = () => {
     }
   };
 
-  const fetchWebhookRequests = async (webhookId) => {
-    setLoading(true);
+  const fetchWebhookRequests = async (webhookId, showLoader = true) => {
+    if (showLoader) {
+      setLoading(true);
+    }
     try {
       const response = await fetch(`${API_BASE}/webhooks/${webhookId}/requests`);
       const data = await response.json();
@@ -153,6 +155,16 @@ const App = () => {
       fetchWebhookRequests(webhookId);
     }
   }, [webhooks]);
+
+  useEffect(() => {
+    if (selectedWebhook) {
+      const interval = setInterval(() => {
+        fetchWebhookRequests(selectedWebhook.id, false);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [selectedWebhook]);
 
   return (
     <div className="min-h-screen bg-slate-900">

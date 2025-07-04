@@ -105,7 +105,7 @@ const App = () => {
   const copyWebhookUrl = (endpoint) => {
     const url = `${API_BASE.replace('/api', '')}/webhook/${endpoint}`;
     navigator.clipboard.writeText(url);
-    showToast('Webhook URL copied to clipboard', 'success');
+    showToast('Webhook URL copied to clipboard', 'info');
   };
 
   const formatDate = (dateString) => {

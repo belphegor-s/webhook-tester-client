@@ -164,18 +164,20 @@ const App = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 ${
-              toast.type === 'success'
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : toast.type === 'error'
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-            }`}
+            className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3
+        backdrop-blur-md bg-opacity-60 border text-white
+        ${
+          toast.type === 'success'
+            ? 'bg-green-500/40 border-green-400/40 text-white'
+            : toast.type === 'error'
+            ? 'bg-red-500/40 border-red-400/40 text-white'
+            : 'bg-blue-500/40 border-blue-400/40 text-white'
+        }`}
           >
-            {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-            {toast.type === 'error' && <XCircle className="w-5 h-5" />}
-            {toast.type === 'info' && <AlertCircle className="w-5 h-5" />}
-            <span>{toast.message}</span>
+            {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-white" />}
+            {toast.type === 'error' && <XCircle className="w-5 h-5 text-white" />}
+            {toast.type === 'info' && <AlertCircle className="w-5 h-5 text-white" />}
+            <span className="font-medium">{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -183,7 +185,7 @@ const App = () => {
       {/* Header */}
       <div className="bg-black/20 backdrop-blur-md border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center space-x-3">
               {selectedWebhook && (
                 <button onClick={backToWebhooks} className="text-gray-400 hover:text-white transition-colors mr-4">
@@ -200,7 +202,10 @@ const App = () => {
             </div>
             <div className="flex items-center space-x-3">
               {!selectedWebhook && (
-                <button onClick={() => setShowCreateModal(true)} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
+                >
                   <Plus className="w-4 h-4" />
                   <span>New Webhook</span>
                 </button>
@@ -243,11 +248,13 @@ const App = () => {
                         </span>
                       </div>
                       <p className="text-gray-300 mb-3">{webhook.description}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-200">
-                        <span className="font-mono">{webhook.endpoint}</span>
-                        <span>•</span>
-                        <span>{webhook.total_requests || 0} requests</span>
-                        <span>•</span>
+                      <div className="text-sm text-gray-200 flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
+                        <span className="font-mono break-all">{webhook.endpoint}</span>
+                        <div className="hidden sm:block">•</div>
+                        <span>
+                          {webhook.total_requests || 0} request{webhook.total_requests === 1 ? '' : 's'}
+                        </span>
+                        <div className="hidden sm:block">•</div>
                         <span>{formatDate(webhook.created_at)}</span>
                       </div>
                     </div>

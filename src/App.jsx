@@ -6,7 +6,7 @@ import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-const WebhookTester = () => {
+const App = () => {
   const [webhooks, setWebhooks] = useState([]);
   const [selectedWebhook, setSelectedWebhook] = useState(null);
   const [requests, setRequests] = useState([]);
@@ -120,11 +120,16 @@ const WebhookTester = () => {
   const viewWebhookRequests = (webhook) => {
     setSelectedWebhook(webhook);
     fetchWebhookRequests(webhook.id);
+
+    const url = new URL(window.location);
+    url.searchParams.set('webhook_id', webhook.id);
+    window.history.replaceState({}, '', url);
   };
 
   const backToWebhooks = () => {
     setSelectedWebhook(null);
     setRequests([]);
+    window.history.replaceState({}, '', window.location.pathname);
   };
 
   const toggleRow = (id) => {
@@ -140,8 +145,17 @@ const WebhookTester = () => {
     fetchWebhooks();
   }, []);
 
+  useEffect(() => {
+    const url = new URL(window.location);
+    const webhookId = parseInt(url.searchParams.get('webhook_id'));
+    if (webhookId && webhooks.length > 0) {
+      setSelectedWebhook(webhooks.find((webhook) => webhook.id === webhookId));
+      fetchWebhookRequests(webhookId);
+    }
+  }, [webhooks]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-slate-900">
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -172,24 +186,21 @@ const WebhookTester = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               {selectedWebhook && (
-                <button onClick={backToWebhooks} className="p-2 text-gray-400 hover:text-white transition-colors">
+                <button onClick={backToWebhooks} className="text-gray-400 hover:text-white transition-colors mr-4">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
               )}
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
+              <div className="p-2 bg-blue-500 rounded-lg">
                 <Globe className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Webhook Tester</h1>
-                {selectedWebhook && <p className="text-sm text-gray-400">Requests for {selectedWebhook.name}</p>}
+                {selectedWebhook && <p className="text-sm text-gray-400">Requests for &quot;{selectedWebhook.name}&quot;</p>}
               </div>
             </div>
             <div className="flex items-center space-x-3">
               {!selectedWebhook && (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 flex items-center space-x-2"
-                >
+                <button onClick={() => setShowCreateModal(true)} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2">
                   <Plus className="w-4 h-4" />
                   <span>New Webhook</span>
                 </button>
@@ -203,7 +214,7 @@ const WebhookTester = () => {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
 
@@ -220,7 +231,7 @@ const WebhookTester = () => {
               {webhooks.map((webhook) => (
                 <div
                   key={webhook.id}
-                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-purple-400/50 transition-all duration-200 cursor-pointer"
+                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-blue-400/50 transition-all duration-200 cursor-pointer"
                   onClick={() => viewWebhookRequests(webhook)}
                 >
                   <div className="flex items-start justify-between">
@@ -232,7 +243,7 @@ const WebhookTester = () => {
                         </span>
                       </div>
                       <p className="text-gray-300 mb-3">{webhook.description}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-400">
+                      <div className="flex items-center space-x-4 text-sm text-gray-200">
                         <span className="font-mono">{webhook.endpoint}</span>
                         <span>•</span>
                         <span>{webhook.total_requests || 0} requests</span>
@@ -279,7 +290,7 @@ const WebhookTester = () => {
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                <button onClick={() => fetchWebhookRequests(selectedWebhook.id)} className="text-gray-400 hover:text-white transition-colors" title="Refresh">
+                <button onClick={() => fetchWebhookRequests(selectedWebhook.id)} className="text-gray-200 hover:text-white transition-colors" title="Refresh">
                   <RotateCcw size={18} />
                 </button>
               </div>
@@ -322,7 +333,7 @@ const WebhookTester = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.ip_address}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate">{request.user_agent}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.response_time ?? '-'}ms</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.response_time ? `${request.response_time}ms` : '-'}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{new Date(request.created_at).toLocaleString()}</td>
                               <td className="px-2 text-gray-300">{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</td>
                             </tr>
@@ -418,7 +429,7 @@ const WebhookTester = () => {
                     type="text"
                     value={webhookForm.name}
                     onChange={(e) => setWebhookForm({ ...webhookForm, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                     placeholder="My Webhook"
                   />
                 </div>
@@ -427,7 +438,7 @@ const WebhookTester = () => {
                   <textarea
                     value={webhookForm.description}
                     onChange={(e) => setWebhookForm({ ...webhookForm, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                     rows="3"
                     placeholder="Description of your webhook"
                   />
@@ -438,7 +449,7 @@ const WebhookTester = () => {
                     type="password"
                     value={webhookForm.secret}
                     onChange={(e) => setWebhookForm({ ...webhookForm, secret: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                     placeholder="Optional webhook secret"
                   />
                 </div>
@@ -450,7 +461,7 @@ const WebhookTester = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
                 >
                   {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                   <span>{loading ? 'Creating...' : 'Create'}</span>
@@ -464,4 +475,4 @@ const WebhookTester = () => {
   );
 };
 
-export default WebhookTester;
+export default App;

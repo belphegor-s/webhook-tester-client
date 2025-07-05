@@ -418,7 +418,7 @@ const App = () => {
             <p className="text-gray-400 mb-4">Create your first webhook to get started</p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 flex items-center space-x-2 mx-auto"
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-purplblue-600 transition-all duration-200 flex items-center space-x-2 mx-auto"
             >
               <Plus className="w-5 h-5" />
               <span>Create Webhook</span>

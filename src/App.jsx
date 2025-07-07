@@ -35,12 +35,12 @@ const App = () => {
     }
   };
 
-  const fetchWebhookRequests = async (webhookId, showLoader = true) => {
+  const fetchWebhookRequests = async (webhookEndpoint, showLoader = true) => {
     if (showLoader) {
       setLoading(true);
     }
     try {
-      const response = await fetch(`${API_BASE}/webhooks/${webhookId}/requests`);
+      const response = await fetch(`${API_BASE}/webhooks/${webhookEndpoint}/requests`);
       const data = await response.json();
       setRequests(data);
     } catch (error) {
@@ -121,10 +121,10 @@ const App = () => {
 
   const viewWebhookRequests = (webhook) => {
     setSelectedWebhook(webhook);
-    fetchWebhookRequests(webhook.id);
+    fetchWebhookRequests(webhook.endpoint);
 
     const url = new URL(window.location);
-    url.searchParams.set('webhook_id', webhook.id);
+    url.searchParams.set('webhook_endpoint', webhook.endpoint);
     window.history.replaceState({}, '', url);
   };
 
@@ -149,17 +149,17 @@ const App = () => {
 
   useEffect(() => {
     const url = new URL(window.location);
-    const webhookId = parseInt(url.searchParams.get('webhook_id'));
-    if (webhookId && webhooks.length > 0) {
-      setSelectedWebhook(webhooks.find((webhook) => webhook.id === webhookId));
-      fetchWebhookRequests(webhookId);
+    const webhookEndpoint = url.searchParams.get('webhook_endpoint');
+    if (webhookEndpoint && webhooks.length > 0) {
+      setSelectedWebhook(webhooks.find((webhook) => webhook.endpoint === webhookEndpoint));
+      fetchWebhookRequests(webhookEndpoint);
     }
   }, [webhooks]);
 
   useEffect(() => {
     if (selectedWebhook) {
       const interval = setInterval(() => {
-        fetchWebhookRequests(selectedWebhook.id, false);
+        fetchWebhookRequests(selectedWebhook.endpoint, false);
       }, 5 * 1000);
 
       return () => clearInterval(interval);
@@ -309,7 +309,7 @@ const App = () => {
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                <button onClick={() => fetchWebhookRequests(selectedWebhook.id)} className="text-gray-200 hover:text-white transition-colors" title="Refresh">
+                <button onClick={() => fetchWebhookRequests(selectedWebhook.endpoint)} className="text-gray-200 hover:text-white transition-colors" title="Refresh">
                   <RotateCcw size={18} />
                 </button>
               </div>

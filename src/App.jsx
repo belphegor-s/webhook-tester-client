@@ -12,14 +12,22 @@ const App = () => {
   const [requests, setRequests] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
+  const [toasts, setToasts] = useState([]);
+
   const [expandedRows, setExpandedRows] = useState({});
 
   const [webhookForm, setWebhookForm] = useState({ name: '', description: '', secret: '' });
 
   const showToast = (message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    const id = Date.now() + Math.random();
+
+    const newToast = { id, message, type };
+    setToasts((prev) => [...prev, newToast]);
+
+    // Remove after 3s
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3000);
   };
 
   const fetchWebhooks = async () => {
@@ -167,31 +175,27 @@ const App = () => {
   }, [selectedWebhook]);
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-zinc-900">
       {/* Toast */}
-      <AnimatePresence>
-        {toast && (
+      <motion.div layout />
+      <AnimatePresence initial={false}>
+        {toasts.map((toast) => (
           <motion.div
-            key="toast"
+            key={toast.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3
+            className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3
         backdrop-blur-md bg-opacity-60 border text-white
-        ${
-          toast.type === 'success'
-            ? 'bg-green-500/40 border-green-400/40 text-white'
-            : toast.type === 'error'
-            ? 'bg-red-500/40 border-red-400/40 text-white'
-            : 'bg-blue-500/40 border-blue-400/40 text-white'
-        }`}
+        ${toast.type === 'success' ? 'bg-green-500/40 border-green-400/40' : toast.type === 'error' ? 'bg-red-500/40 border-red-400/40' : 'bg-blue-500/40 border-blue-400/40'}`}
+            style={{ bottom: `${10 + toasts.indexOf(toast) * 60}px` }}
           >
             {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-white" />}
             {toast.type === 'error' && <XCircle className="w-5 h-5 text-white" />}
             {toast.type === 'info' && <AlertCircle className="w-5 h-5 text-white" />}
             <span className="font-medium">{toast.message}</span>
           </motion.div>
-        )}
+        ))}
       </AnimatePresence>
 
       {/* Header */}
@@ -248,7 +252,7 @@ const App = () => {
               {webhooks.map((webhook) => (
                 <div
                   key={webhook.id}
-                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-blue-400/50 transition-all duration-200 cursor-pointer"
+                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border-2 border-white/20 hover:border-blue-400/50 transition-all duration-200 cursor-pointer"
                   onClick={() => viewWebhookRequests(webhook)}
                 >
                   <div className="flex items-start justify-between">
@@ -354,7 +358,9 @@ const App = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate">{request.user_agent}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.response_time ? `${request.response_time}ms` : '-'}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{new Date(request.created_at).toLocaleString()}</td>
-                              <td className="px-2 text-gray-300">{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</td>
+                              <td className="px-2 text-gray-300">
+                                <ChevronUp size={18} className={`${isExpanded ? '' : 'rotate-180'} transition-all duration-300`} />
+                              </td>
                             </tr>
                             <AnimatePresence initial={false}>
                               {isExpanded && (

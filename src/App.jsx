@@ -185,8 +185,8 @@ const App = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3
-        backdrop-blur-md bg-opacity-60 border text-white
+            className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-xl grid grid-cols-[auto_1fr] items-center space-x-3
+        backdrop-blur-md bg-opacity-60 border text-white w-full max-w-[20em]
         ${toast.type === 'success' ? 'bg-green-500/40 border-green-400/40' : toast.type === 'error' ? 'bg-red-500/40 border-red-400/40' : 'bg-blue-500/40 border-blue-400/40'}`}
             style={{ bottom: `${10 + toasts.indexOf(toast) * 60}px` }}
           >
@@ -443,7 +443,7 @@ const App = () => {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-gray-900 rounded-xl p-6 w-full max-w-md border border-white/20"
+              className="bg-zinc-900 rounded-xl p-6 w-full max-w-md border-2 border-white/20"
               onSubmit={createWebhook}
             >
               <h3 className="text-lg font-semibold text-white mb-4">Create New Webhook</h3>
@@ -469,7 +469,12 @@ const App = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Secret</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Secret{' '}
+                    <span className="text-xs">
+                      (will be treated as <code className="text-green-400">Authorization</code> header as <span className="text-blue-500">Bearer token</span>)
+                    </span>
+                  </label>
                   <input
                     type="password"
                     value={webhookForm.secret}

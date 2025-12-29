@@ -310,9 +310,10 @@ const App = () => {
                           {webhook.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
-                      <p className="text-gray-300 mb-3">{webhook.description}</p>
+                      {webhook.description && <p className="text-gray-400 my-3 italic">{webhook.description}</p>}
+
                       <div className="text-sm text-gray-200 flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
-                        <span className="font-mono break-all">{webhook.endpoint}</span>
+                        <span className="font-mono break-all text-green-500/40 font-semibold">{webhook.endpoint}</span>
                         <div className="hidden sm:block">•</div>
                         <span>
                           {webhook.total_requests || 0} request{webhook.total_requests === 1 ? '' : 's'}

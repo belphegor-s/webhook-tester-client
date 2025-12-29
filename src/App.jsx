@@ -361,7 +361,7 @@ const App = () => {
                       return newPage;
                     })
                   }
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
                 >
                   Prev
                 </button>
@@ -381,7 +381,7 @@ const App = () => {
                       return newPage;
                     })
                   }
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
                 >
                   Next
                 </button>
@@ -515,7 +515,7 @@ const App = () => {
                       return np;
                     });
                   }}
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200 "
                 >
                   Prev
                 </button>
@@ -534,7 +534,7 @@ const App = () => {
                       return np;
                     });
                   }}
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
                 >
                   Next
                 </button>

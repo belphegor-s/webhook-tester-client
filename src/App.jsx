@@ -1,61 +1,12 @@
 import { useState, useEffect, Fragment } from 'react';
-import { Plus, Trash2, Copy, Globe, ArrowLeft, ChevronDown, ChevronUp, ClipboardCopy, CheckCircle, XCircle, AlertCircle, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Copy, Globe, ArrowLeft, ChevronUp, ClipboardCopy, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import clsx from 'clsx';
+import ToastContainer from './components/ToastContainer';
+import { formatUserDate } from './utils/formatUserDate';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
-const spring = {
-  type: 'spring',
-  damping: 20,
-  stiffness: 180,
-  mass: 0.5,
-};
-
-const ToastContainer = ({ toasts }) => {
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-sm pointer-events-none flex flex-col-reverse items-center">
-      <AnimatePresence initial={false}>
-        {[...toasts].slice(-5).map((toast, index) => {
-          const depth = index;
-          const scale = 1 - depth * 0.04;
-          const blur = depth === 0 ? 'blur-0' : 'blur-[1px]';
-          const opacity = depth === 0 ? 'opacity-100' : 'opacity-70';
-          const translateY = depth * -8;
-          const zIndex = 100 - depth;
-
-          return (
-            <motion.div
-              key={toast.id}
-              layout
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              animate={{ opacity: 1, y: translateY, scale }}
-              exit={{ opacity: 0, y: 30, scale: 0.9 }}
-              transition={spring}
-              className={clsx(
-                'absolute pointer-events-auto px-4 py-3 rounded-xl shadow-xl grid grid-cols-[auto_1fr] items-center gap-3 backdrop-blur-md bg-opacity-60 border text-white',
-                blur,
-                opacity,
-                toast.type === 'success' ? 'bg-green-500/40 border-green-400/40' : toast.type === 'error' ? 'bg-red-500/40 border-red-400/40' : 'bg-blue-500/40 border-blue-400/40'
-              )}
-              style={{
-                transformOrigin: 'bottom center',
-                zIndex,
-              }}
-            >
-              {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-white" />}
-              {toast.type === 'error' && <XCircle className="w-5 h-5 text-white" />}
-              {toast.type === 'info' && <AlertCircle className="w-5 h-5 text-white" />}
-              <span className="font-medium text-sm">{toast.message}</span>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-    </div>
-  );
-};
 
 const App = () => {
   const [webhooks, setWebhooks] = useState([]);
@@ -64,6 +15,11 @@ const App = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
+  const [webhookPage, setWebhookPage] = useState(0);
+  const [webhookLimit] = useState(10);
+
+  const [requestPage, setRequestPage] = useState(0);
+  const [requestLimit] = useState(20);
 
   const [expandedRows, setExpandedRows] = useState({});
 
@@ -84,7 +40,7 @@ const App = () => {
   const fetchWebhooks = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/webhooks`);
+      const response = await fetch(`${API_BASE}/webhooks?limit=${webhookLimit}&offset=${webhookPage * webhookLimit}`);
       const data = await response.json();
       setWebhooks(data);
     } catch (error) {
@@ -99,7 +55,7 @@ const App = () => {
       setLoading(true);
     }
     try {
-      const response = await fetch(`${API_BASE}/webhooks/${webhookEndpoint}/requests`);
+      const response = await fetch(`${API_BASE}/webhooks/${webhookEndpoint}/requests?limit=${requestLimit}&offset=${requestPage * requestLimit}`);
       const data = await response.json();
       setRequests(data);
     } catch (error) {
@@ -173,6 +129,7 @@ const App = () => {
     return new Date(dateString).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -180,17 +137,23 @@ const App = () => {
 
   const viewWebhookRequests = (webhook) => {
     setSelectedWebhook(webhook);
+    setRequestPage(0);
     fetchWebhookRequests(webhook.endpoint);
 
     const url = new URL(window.location);
     url.searchParams.set('webhook_endpoint', webhook.endpoint);
+    url.searchParams.set('req_page', 1);
     window.history.replaceState({}, '', url);
   };
 
   const backToWebhooks = () => {
     setSelectedWebhook(null);
     setRequests([]);
-    window.history.replaceState({}, '', window.location.pathname);
+    setWebhookPage(0);
+    const url = new URL(window.location);
+    url.searchParams.delete('webhook_endpoint');
+    url.searchParams.delete('req_page');
+    window.history.replaceState({}, '', url);
   };
 
   const toggleRow = (id) => {
@@ -203,8 +166,14 @@ const App = () => {
   };
 
   useEffect(() => {
-    fetchWebhooks();
+    const url = new URL(window.location);
+    const p = parseInt(url.searchParams.get('page'));
+    if (!isNaN(p) && p >= 0) setWebhookPage(p - 1);
   }, []);
+
+  useEffect(() => {
+    fetchWebhooks();
+  }, [webhookPage]);
 
   useEffect(() => {
     const url = new URL(window.location);
@@ -216,14 +185,40 @@ const App = () => {
   }, [webhooks]);
 
   useEffect(() => {
-    if (selectedWebhook) {
-      const interval = setInterval(() => {
-        fetchWebhookRequests(selectedWebhook.endpoint, false);
-      }, 5 * 1000);
-
-      return () => clearInterval(interval);
+    const url = new URL(window.location);
+    const wh = url.searchParams.get('webhook_endpoint');
+    const req = parseInt(url.searchParams.get('req_page'));
+    if (wh && webhooks.length > 0) {
+      const whObj = webhooks.find((w) => w.endpoint === wh);
+      if (whObj) setSelectedWebhook(whObj);
+      if (!isNaN(req) && req >= 0) setRequestPage(req - 1);
+      fetchWebhookRequests(wh);
     }
-  }, [selectedWebhook]);
+  }, [webhooks]);
+
+  useEffect(() => {
+    if (!selectedWebhook || requestPage !== 0) return;
+    const interval = setInterval(() => {
+      fetchWebhookRequests(selectedWebhook.endpoint, false);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedWebhook, requestPage]);
+
+  useEffect(() => {
+    fetchWebhooks();
+  }, [webhookPage]);
+
+  useEffect(() => {
+    if (selectedWebhook) fetchWebhookRequests(selectedWebhook.endpoint);
+  }, [requestPage]);
+
+  useEffect(() => {
+    if (!selectedWebhook) return;
+    const url = new URL(window.location);
+    url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
+    url.searchParams.set('req_page', requestPage + 1);
+    window.history.replaceState({}, '', url);
+  }, [requestPage]);
 
   return (
     <div className="min-h-screen bg-zinc-900">
@@ -351,6 +346,46 @@ const App = () => {
                   </div>
                 </div>
               ))}
+
+              <div className="flex justify-between items-center mt-6">
+                <button
+                  disabled={webhookPage === 0}
+                  onClick={() =>
+                    setWebhookPage((p) => {
+                      const newPage = Math.max(p - 1, 0);
+                      const url = new URL(window.location);
+                      url.searchParams.set('page', newPage + 1);
+                      url.searchParams.delete('req_page');
+                      url.searchParams.delete('webhook_endpoint');
+                      window.history.replaceState({}, '', url);
+                      return newPage;
+                    })
+                  }
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                >
+                  Prev
+                </button>
+
+                <span className="text-gray-400 text-sm">Page {webhookPage + 1}</span>
+
+                <button
+                  disabled={webhooks.length < webhookLimit}
+                  onClick={() =>
+                    setWebhookPage((p) => {
+                      const newPage = p + 1;
+                      const url = new URL(window.location);
+                      url.searchParams.set('page', newPage + 1);
+                      url.searchParams.delete('req_page');
+                      url.searchParams.delete('webhook_endpoint');
+                      window.history.replaceState({}, '', url);
+                      return newPage;
+                    })
+                  }
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -377,6 +412,7 @@ const App = () => {
                   <table className="w-full">
                     <thead className="bg-black/20">
                       <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Request ID</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Method</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">IP Address</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User Agent</th>
@@ -391,6 +427,7 @@ const App = () => {
                         return (
                           <Fragment key={request.id}>
                             <tr className="hover:bg-white/5 select-none cursor-pointer" onClick={() => toggleRow(request.id)}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.id}</td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -409,7 +446,7 @@ const App = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.ip_address}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate">{request.user_agent}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.response_time ? `${request.response_time}ms` : '-'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{new Date(request.created_at).toLocaleString()}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{formatUserDate(request.created_at)}</td>
                               <td className="px-2 text-gray-300">
                                 <ChevronUp size={18} className={`${isExpanded ? '' : 'rotate-180'} transition-all duration-300`} />
                               </td>
@@ -465,6 +502,43 @@ const App = () => {
                 </div>
               </div>
               {requests.length === 0 && <div className="text-center py-8 text-gray-400">No requests received yet for this webhook.</div>}
+              <div className="flex justify-between items-center mt-6">
+                <button
+                  disabled={requestPage === 0}
+                  onClick={() => {
+                    setRequestPage((p) => {
+                      const np = Math.max(p - 1, 0);
+                      const url = new URL(window.location);
+                      url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
+                      url.searchParams.set('req_page', np + 1);
+                      window.history.replaceState({}, '', url);
+                      return np;
+                    });
+                  }}
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                >
+                  Prev
+                </button>
+
+                <span className="text-gray-400 text-sm">Page {requestPage + 1}</span>
+
+                <button
+                  disabled={requests.length < requestLimit}
+                  onClick={() => {
+                    setRequestPage((p) => {
+                      const np = p + 1;
+                      const url = new URL(window.location);
+                      url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
+                      url.searchParams.set('req_page', np + 1);
+                      window.history.replaceState({}, '', url);
+                      return np;
+                    });
+                  }}
+                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 text-gray-200"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

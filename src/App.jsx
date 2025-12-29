@@ -461,7 +461,7 @@ const App = () => {
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                                 >
-                                  <td colSpan={6} className="px-6 py-4 text-sm text-gray-100">
+                                  <td colSpan={7} className="px-6 py-4 text-sm text-gray-100">
                                     <div className="space-y-4">
                                       {['headers', 'body', 'query_params'].map((key, i) => (
                                         <div key={`request-${i}`}>

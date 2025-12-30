@@ -15,6 +15,8 @@ const App = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
+  const [totalWebhookPages, setTotalWebhookPages] = useState(0);
+  const [totalRequestPages, setTotalRequestPages] = useState(0);
   const [webhookPage, setWebhookPage] = useState(0);
   const [webhookLimit] = useState(10);
 
@@ -42,7 +44,8 @@ const App = () => {
     try {
       const response = await fetch(`${API_BASE}/webhooks?limit=${webhookLimit}&offset=${webhookPage * webhookLimit}`);
       const data = await response.json();
-      setWebhooks(data);
+      setWebhooks(data?.data ?? []);
+      setTotalWebhookPages(data?.totalPages ?? 0);
     } catch (error) {
       showToast('Failed to fetch webhooks', 'error');
     } finally {
@@ -57,7 +60,8 @@ const App = () => {
     try {
       const response = await fetch(`${API_BASE}/webhooks/${webhookEndpoint}/requests?limit=${requestLimit}&offset=${requestPage * requestLimit}`);
       const data = await response.json();
-      setRequests(data);
+      setRequests(data?.data ?? []);
+      setTotalRequestPages(data?.totalPages ?? 0);
     } catch (error) {
       showToast('Failed to fetch requests', 'error');
     } finally {
@@ -222,27 +226,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-zinc-900">
-      {/* Toast */}
-      {/* <motion.div layout />
-      <AnimatePresence initial={false}>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className={`fixed left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-xl grid grid-cols-[auto_1fr] items-center space-x-3
-        backdrop-blur-md bg-opacity-60 border text-white w-full max-w-[20em]
-        ${toast.type === 'success' ? 'bg-green-500/40 border-green-400/40' : toast.type === 'error' ? 'bg-red-500/40 border-red-400/40' : 'bg-blue-500/40 border-blue-400/40'}`}
-            style={{ bottom: `${10 + toasts.indexOf(toast) * 60}px` }}
-          >
-            {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-white" />}
-            {toast.type === 'error' && <XCircle className="w-5 h-5 text-white" />}
-            {toast.type === 'info' && <AlertCircle className="w-5 h-5 text-white" />}
-            <span className="font-medium">{toast.message}</span>
-          </motion.div>
-        ))}
-      </AnimatePresence> */}
       <ToastContainer toasts={toasts} />
 
       {/* Header */}
@@ -347,46 +330,6 @@ const App = () => {
                   </div>
                 </div>
               ))}
-
-              <div className="flex justify-between items-center mt-6">
-                <button
-                  disabled={webhookPage === 0}
-                  onClick={() =>
-                    setWebhookPage((p) => {
-                      const newPage = Math.max(p - 1, 0);
-                      const url = new URL(window.location);
-                      url.searchParams.set('page', newPage + 1);
-                      url.searchParams.delete('req_page');
-                      url.searchParams.delete('webhook_endpoint');
-                      window.history.replaceState({}, '', url);
-                      return newPage;
-                    })
-                  }
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
-                >
-                  Prev
-                </button>
-
-                <span className="text-gray-400 text-sm">Page {webhookPage + 1}</span>
-
-                <button
-                  disabled={webhooks.length < webhookLimit}
-                  onClick={() =>
-                    setWebhookPage((p) => {
-                      const newPage = p + 1;
-                      const url = new URL(window.location);
-                      url.searchParams.set('page', newPage + 1);
-                      url.searchParams.delete('req_page');
-                      url.searchParams.delete('webhook_endpoint');
-                      window.history.replaceState({}, '', url);
-                      return newPage;
-                    })
-                  }
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
-                >
-                  Next
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -521,7 +464,9 @@ const App = () => {
                   Prev
                 </button>
 
-                <span className="text-gray-400 text-sm">Page {requestPage + 1}</span>
+                <span className="text-gray-400 text-sm">
+                  Page {requestPage + 1} of {totalRequestPages}
+                </span>
 
                 <button
                   disabled={requests.length < requestLimit}
@@ -557,6 +502,52 @@ const App = () => {
               <span>Create Webhook</span>
             </button>
           </div>
+        )}
+
+        {!selectedWebhook && !loading && (
+          <>
+            <div className="flex justify-between items-center mt-6">
+              <button
+                disabled={webhookPage === 0}
+                onClick={() =>
+                  setWebhookPage((p) => {
+                    const newPage = Math.max(p - 1, 0);
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', newPage + 1);
+                    url.searchParams.delete('req_page');
+                    url.searchParams.delete('webhook_endpoint');
+                    window.history.replaceState({}, '', url);
+                    return newPage;
+                  })
+                }
+                className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
+              >
+                Prev
+              </button>
+
+              <span className="text-gray-400 text-sm">
+                Page {webhookPage + 1} of {totalWebhookPages}
+              </span>
+
+              <button
+                disabled={webhooks.length < webhookLimit}
+                onClick={() =>
+                  setWebhookPage((p) => {
+                    const newPage = p + 1;
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', newPage + 1);
+                    url.searchParams.delete('req_page');
+                    url.searchParams.delete('webhook_endpoint');
+                    window.history.replaceState({}, '', url);
+                    return newPage;
+                  })
+                }
+                className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
 

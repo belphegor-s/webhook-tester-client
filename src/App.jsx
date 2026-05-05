@@ -1,624 +1,396 @@
-import { useState, useEffect, Fragment } from 'react';
-import { Plus, Trash2, Copy, Globe, ArrowLeft, ChevronUp, ClipboardCopy, RotateCcw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RotateCcw, ChevronLeft, ChevronRight, Globe, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import ToastContainer from './components/ToastContainer';
-import { formatUserDate } from './utils/formatUserDate';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+import { useWebhooks } from './hooks/useWebhooks';
+import { useRequests } from './hooks/useRequests';
+
+import { Navbar } from './components/layout/Navbar';
+import { Container } from './components/layout/Container';
+import { WebhookList } from './components/webhook/WebhookList';
+import { RequestTable } from './components/webhook/RequestTable';
+import { CreateWebhookModal } from './components/webhook/CreateWebhookModal';
+import { Button } from './components/ui/Button';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/Dialog';
+import ToastContainer from './components/ToastContainer';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const App = () => {
-  const [webhooks, setWebhooks] = useState([]);
   const [selectedWebhook, setSelectedWebhook] = useState(null);
-  const [requests, setRequests] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [totalWebhookPages, setTotalWebhookPages] = useState(0);
-  const [totalRequestPages, setTotalRequestPages] = useState(0);
-  const [webhookPage, setWebhookPage] = useState(0);
-  const [webhookLimit] = useState(10);
+  const [webhookToDelete, setWebhookToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const [requestPage, setRequestPage] = useState(0);
-  const [requestLimit] = useState(20);
+  const {
+    webhooks,
+    loading: webhooksLoading,
+    totalPages: totalWebhookPages,
+    page: webhookPage,
+    setPage: setWebhookPage,
+    fetchWebhooks,
+    createWebhook: apiCreateWebhook,
+    deleteWebhook: apiDeleteWebhook,
+  } = useWebhooks();
 
-  const [expandedRows, setExpandedRows] = useState({});
+  const {
+    requests,
+    loading: requestsLoading,
+    totalPages: totalRequestPages,
+    page: requestPage,
+    setPage: setRequestPage,
+    fetchRequests,
+  } = useRequests(selectedWebhook?.endpoint);
 
-  const [webhookForm, setWebhookForm] = useState({ name: '', description: '', secret: '' });
-
-  const showToast = (message, type = 'info') => {
+  const showToast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
-
     const newToast = { id, message, type };
     setToasts((prev) => [...prev, newToast]);
-
-    // Remove after 3s
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
-  };
+  }, []);
 
-  const fetchWebhooks = async () => {
-    setLoading(true);
+  const handleCreateWebhook = async (formData) => {
+    setIsCreating(true);
     try {
-      const response = await fetch(`${API_BASE}/webhooks?limit=${webhookLimit}&offset=${webhookPage * webhookLimit}`);
-      const data = await response.json();
-      setWebhooks(data?.data ?? []);
-      setTotalWebhookPages(data?.totalPages ?? 0);
+      await apiCreateWebhook(formData);
+      showToast('Webhook created successfully', 'success');
+      setShowCreateModal(false);
     } catch (error) {
-      showToast('Failed to fetch webhooks', 'error');
+      showToast(error.message || 'Failed to create webhook', 'error');
+      throw error;
     } finally {
-      setLoading(false);
+      setIsCreating(false);
     }
   };
 
-  const fetchWebhookRequests = async (webhookEndpoint, showLoader = true) => {
-    if (showLoader) {
-      setLoading(true);
-    }
-    try {
-      const response = await fetch(`${API_BASE}/webhooks/${webhookEndpoint}/requests?limit=${requestLimit}&offset=${requestPage * requestLimit}`);
-      const data = await response.json();
-      setRequests(data?.data ?? []);
-      setTotalRequestPages(data?.totalPages ?? 0);
-    } catch (error) {
-      showToast('Failed to fetch requests', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteWebhook = (id, name) => {
+    setWebhookToDelete({ id, name });
   };
 
-  const createWebhook = async (e) => {
-    e.preventDefault();
-
-    if (!webhookForm.name.trim()) {
-      showToast('Please enter a webhook name', 'error');
-      return;
-    }
-
-    setLoading(true);
+  const confirmDeleteWebhook = async () => {
+    if (!webhookToDelete) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE}/webhooks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(webhookForm),
-      });
-
-      if (response.ok) {
-        setShowCreateModal(false);
-        setWebhookForm({ name: '', description: '', secret: '' });
-        fetchWebhooks();
-        showToast('Webhook created successfully', 'success');
-      } else {
-        const error = await response.json();
-        showToast(error?.error || 'Failed to create webhook', 'error');
-      }
-    } catch (error) {
-      showToast('Failed to create webhook', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteWebhook = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/webhooks/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchWebhooks();
-        showToast('Webhook deleted successfully', 'success');
-      } else {
-        showToast('Failed to delete webhook', 'error');
+      await apiDeleteWebhook(webhookToDelete.id);
+      showToast('Webhook deleted successfully', 'success');
+      if (selectedWebhook?.id === webhookToDelete.id) {
+        setSelectedWebhook(null);
       }
     } catch (error) {
       showToast('Failed to delete webhook', 'error');
     } finally {
-      setLoading(false);
+      setIsDeleting(false);
+      setWebhookToDelete(null);
     }
   };
 
   const copyWebhookUrl = (endpoint) => {
-    const url = `${API_BASE.replace('/api', '')}/webhook/${endpoint}`;
+    const baseUrl = API_BASE ? API_BASE.replace(/\/api$/, '') : window.location.origin;
+    const url = `${baseUrl}/webhook/${endpoint}`;
     navigator.clipboard.writeText(url);
-    showToast('Webhook URL copied to clipboard', 'info');
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const viewWebhookRequests = (webhook) => {
-    setSelectedWebhook(webhook);
-    setRequestPage(0);
-    fetchWebhookRequests(webhook.endpoint);
-
-    const url = new URL(window.location);
-    url.searchParams.set('webhook_endpoint', webhook.endpoint);
-    url.searchParams.set('req_page', 1);
-    window.history.replaceState({}, '', url);
-  };
-
-  const backToWebhooks = () => {
-    setSelectedWebhook(null);
-    setRequests([]);
-    setWebhookPage(0);
-    const url = new URL(window.location);
-    url.searchParams.delete('webhook_endpoint');
-    url.searchParams.delete('req_page');
-    window.history.replaceState({}, '', url);
-  };
-
-  const toggleRow = (id) => {
-    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+    showToast('Webhook URL copied', 'info');
   };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    showToast('Copied to clipboard');
+    showToast('Copied to clipboard', 'info');
   };
 
-  useEffect(() => {
+  const handleSelectWebhook = (webhook) => {
+    setSelectedWebhook(webhook);
+    setRequestPage(0);
+    
     const url = new URL(window.location);
-    const p = parseInt(url.searchParams.get('page'));
-    if (!isNaN(p) && p >= 0) setWebhookPage(p - 1);
-  }, []);
+    url.searchParams.set('webhook_endpoint', webhook.endpoint);
+    url.searchParams.set('req_page', 1);
+    url.searchParams.delete('page');
+    window.history.pushState({ wh: webhook.endpoint, rp: 1 }, '', url);
+  };
 
-  useEffect(() => {
-    fetchWebhooks();
-  }, [webhookPage]);
-
-  useEffect(() => {
+  const handleBackToWebhooks = () => {
+    setSelectedWebhook(null);
     const url = new URL(window.location);
-    const webhookEndpoint = url.searchParams.get('webhook_endpoint');
-    if (webhookEndpoint && webhooks.length > 0) {
-      setSelectedWebhook(webhooks.find((webhook) => webhook.endpoint === webhookEndpoint));
-      fetchWebhookRequests(webhookEndpoint);
+    url.searchParams.delete('webhook_endpoint');
+    url.searchParams.delete('req_page');
+    url.searchParams.set('page', webhookPage + 1);
+    window.history.pushState({ p: webhookPage + 1 }, '', url);
+  };
+
+  const handlePageChange = (newPage) => {
+    setWebhookPage(newPage);
+    const url = new URL(window.location);
+    url.searchParams.set('page', newPage + 1);
+    window.history.pushState({ p: newPage + 1 }, '', url);
+  };
+
+  const handleRequestPageChange = (newPage) => {
+    setRequestPage(newPage);
+    const url = new URL(window.location);
+    url.searchParams.set('req_page', newPage + 1);
+    window.history.pushState({ wh: selectedWebhook.endpoint, rp: newPage + 1 }, '', url);
+  };
+
+  // Sync state from URL
+  const syncFromUrl = useCallback(() => {
+    const url = new URL(window.location);
+    const whEndpoint = url.searchParams.get('webhook_endpoint');
+    const p = parseInt(url.searchParams.get('page')) || 1;
+    const rp = parseInt(url.searchParams.get('req_page')) || 1;
+
+    if (webhooks.length > 0) {
+      if (whEndpoint) {
+        const wh = webhooks.find(w => w.endpoint === whEndpoint);
+        if (wh) {
+          setSelectedWebhook(wh);
+          setRequestPage(rp - 1);
+        }
+      } else {
+        setSelectedWebhook(null);
+        setWebhookPage(p - 1);
+      }
     }
-  }, [webhooks]);
+  }, [webhooks, setRequestPage, setWebhookPage]);
 
+  // Initial load and back/forward buttons
   useEffect(() => {
-    const url = new URL(window.location);
-    const wh = url.searchParams.get('webhook_endpoint');
-    const req = parseInt(url.searchParams.get('req_page'));
-    if (wh && webhooks.length > 0) {
-      const whObj = webhooks.find((w) => w.endpoint === wh);
-      if (whObj) setSelectedWebhook(whObj);
-      if (!isNaN(req) && req >= 0) setRequestPage(req - 1);
-      fetchWebhookRequests(wh);
-    }
-  }, [webhooks]);
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, [syncFromUrl]);
 
-  useEffect(() => {
-    if (!selectedWebhook || requestPage !== 0) return;
-    const interval = setInterval(() => {
-      fetchWebhookRequests(selectedWebhook.endpoint, false);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [selectedWebhook, requestPage]);
-
-  useEffect(() => {
-    fetchWebhooks();
-  }, [webhookPage]);
-
-  useEffect(() => {
-    if (selectedWebhook) fetchWebhookRequests(selectedWebhook.endpoint);
-  }, [requestPage]);
-
-  useEffect(() => {
-    if (!selectedWebhook) return;
-    const url = new URL(window.location);
-    url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
-    url.searchParams.set('req_page', requestPage + 1);
-    window.history.replaceState({}, '', url);
-  }, [requestPage]);
-
-  return (
-    <div className="min-h-screen bg-zinc-900">
-      <ToastContainer toasts={toasts} />
-
-      {/* Header */}
-      <div className="bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center space-x-3">
-              {selectedWebhook && (
-                <button onClick={backToWebhooks} className="text-gray-400 hover:text-white transition-colors mr-4">
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-              )}
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <Globe className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">Webhook Tester</h1>
-                {selectedWebhook && <p className="text-sm text-gray-400">Requests for &quot;{selectedWebhook.name}&quot;</p>}
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              {!selectedWebhook && (
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2 whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>New Webhook</span>
-                </button>
-              )}
-            </div>
-          </div>
+  if (!API_BASE) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-zinc-900 border border-red-500/20 rounded-xl p-8 text-center">
+          <h2 className="text-xl font-bold text-white mb-2">Configuration Error</h2>
+          <p className="text-zinc-400 mb-6">VITE_API_BASE_URL is not defined. Please check your .env file.</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30 overflow-x-hidden">
+      <ToastContainer toasts={toasts} />
+      
+      <Navbar 
+        selectedWebhook={selectedWebhook} 
+        onBack={handleBackToWebhooks}
+        onNewWebhook={() => setShowCreateModal(true)}
+      />
 
-        {!selectedWebhook && !loading && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Your Webhooks</h2>
-              <span className="text-sm text-gray-400">
-                {webhooks.length} webhook{webhooks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
+      <Container className="relative">
+        <AnimatePresence mode="wait">
+          {!selectedWebhook ? (
+            <motion.div
+              key="webhooks-view"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Your Webhooks</h1>
+                  <p className="text-zinc-500 mt-1 text-sm sm:text-base">Manage and monitor your endpoints.</p>
+                </div>
+              </div>
 
-            <div className="grid gap-4">
-              {webhooks.map((webhook) => (
-                <div
-                  key={webhook.id}
-                  className="bg-white/10 backdrop-blur-md rounded-xl p-6 border-2 border-white/20 hover:border-blue-400/50 transition-all duration-200 cursor-pointer"
-                  onClick={() => viewWebhookRequests(webhook)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-medium text-white">{webhook.name}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs ${webhook.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {webhook.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      {webhook.description && <p className="text-gray-400 my-3 italic">{webhook.description}</p>}
-
-                      <div className="text-sm text-gray-200 flex flex-col gap-2 sm:gap-0 sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
-                        <span className="font-mono break-all text-green-500/40 font-semibold">{webhook.endpoint}</span>
-                        <div className="hidden sm:block">•</div>
-                        <span>
-                          {webhook.total_requests || 0} request{webhook.total_requests === 1 ? '' : 's'}
-                        </span>
-                        <div className="hidden sm:block">•</div>
-                        <span>{formatDate(webhook.created_at)}</span>
-                      </div>
+              {webhooks.length === 0 && !webhooksLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="rounded-full bg-zinc-900 p-6 mb-4">
+                    <Globe className="h-10 w-10 text-zinc-700" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">No webhooks yet</h3>
+                  <p className="text-zinc-500 max-w-xs mx-auto mt-2 text-sm">
+                    Create your first webhook to start receiving and inspecting incoming requests.
+                  </p>
+                  <Button onClick={() => setShowCreateModal(true)} className="mt-6 gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Webhook
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {webhooksLoading && webhooks.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-50 pointer-events-none transition-opacity">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-32 w-full rounded-xl bg-zinc-900 animate-pulse border border-zinc-800" />
+                      ))}
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyWebhookUrl(webhook.endpoint);
-                        }}
-                        className="p-2 text-gray-400 hover:text-white transition-colors"
-                        title="Copy webhook URL"
+                  ) : (
+                    <WebhookList 
+                      webhooks={webhooks}
+                      loading={webhooksLoading}
+                      onSelect={handleSelectWebhook}
+                      onDelete={handleDeleteWebhook}
+                      onCopy={copyWebhookUrl}
+                    />
+                  )}
+
+                  {totalWebhookPages > 1 && (
+                    <div className="flex items-center justify-between pt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={webhookPage === 0}
+                        onClick={() => handlePageChange(webhookPage - 1)}
+                        className="gap-2"
                       >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteWebhook(webhook.id, webhook.name);
-                        }}
-                        className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                        title="Delete webhook"
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Previous</span>
+                      </Button>
+                      <span className="text-xs sm:text-sm text-zinc-500 font-medium">
+                        Page {webhookPage + 1} of {totalWebhookPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={webhookPage === totalWebhookPages - 1}
+                        onClick={() => handlePageChange(webhookPage + 1)}
+                        className="gap-2"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="requests-view"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full overflow-hidden"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">{selectedWebhook.name}</h2>
+                    {requestsLoading && (
+                      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-zinc-500 text-[10px] sm:text-sm">
+                    <span className="font-mono text-[9px] sm:text-xs bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 truncate max-w-full">
+                      {selectedWebhook.endpoint}
+                    </span>
+                    <span className="hidden sm:inline text-zinc-700">•</span>
+                    <span className="whitespace-nowrap">{requests.length} requests in this page</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedWebhook && !loading && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-white">Recent Requests</h2>
-                <span className="text-sm text-gray-400">
-                  {requests.length} request{requests.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <button onClick={() => fetchWebhookRequests(selectedWebhook.endpoint)} className="text-gray-200 hover:text-white transition-colors" title="Refresh">
-                  <RotateCcw size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-black/20">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Request ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Method</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">IP Address</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User Agent</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Response Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/10">
-                      {requests.map((request) => {
-                        const isExpanded = expandedRows[request.id];
-                        return (
-                          <Fragment key={request.id}>
-                            <tr className="hover:bg-white/5 select-none cursor-pointer" onClick={() => toggleRow(request.id)}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.id}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    request.method === 'GET'
-                                      ? 'bg-blue-500/20 text-blue-400'
-                                      : request.method === 'POST'
-                                      ? 'bg-green-500/20 text-green-400'
-                                      : request.method === 'PUT'
-                                      ? 'bg-yellow-500/20 text-yellow-400'
-                                      : 'bg-red-500/20 text-red-400'
-                                  }`}
-                                >
-                                  {request.method}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.ip_address}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate">{request.user_agent}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.response_time ? `${request.response_time}ms` : '-'}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{formatUserDate(request.created_at)}</td>
-                              <td className="px-2 text-gray-300">
-                                <ChevronUp size={18} className={`${isExpanded ? '' : 'rotate-180'} transition-all duration-300`} />
-                              </td>
-                            </tr>
-                            <AnimatePresence initial={false}>
-                              {isExpanded && (
-                                <motion.tr
-                                  className="bg-black/10"
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                >
-                                  <td colSpan={7} className="px-6 py-4 text-sm text-gray-100">
-                                    <div className="space-y-4">
-                                      {['headers', 'body', 'query_params'].map((key, i) => (
-                                        <div key={`request-${i}`}>
-                                          <div className="flex justify-between items-center mb-1">
-                                            <span className="font-medium capitalize">{key.replace('_', ' ')}:</span>
-                                            <button onClick={() => copyToClipboard(request[key])} className="text-gray-400 hover:text-white" title="Copy to clipboard">
-                                              <ClipboardCopy size={16} />
-                                            </button>
-                                          </div>
-                                          <SyntaxHighlighter
-                                            language="json"
-                                            style={atomDark}
-                                            customStyle={{
-                                              padding: '1em',
-                                              lineHeight: '1.4',
-                                              borderRadius: '0.5em',
-                                            }}
-                                          >
-                                            {(() => {
-                                              try {
-                                                return JSON.stringify(JSON.parse(request[key]), null, 2);
-                                              } catch {
-                                                return request[key];
-                                              }
-                                            })()}
-                                          </SyntaxHighlighter>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </td>
-                                </motion.tr>
-                              )}
-                            </AnimatePresence>
-                          </Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" size="icon" onClick={() => fetchRequests()} title="Refresh" className="h-9 w-9">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => copyWebhookUrl(selectedWebhook.endpoint)} className="flex-1 sm:flex-none h-9">
+                    Copy URL
+                  </Button>
                 </div>
               </div>
-              {requests.length === 0 && <div className="text-center py-8 text-gray-400">No requests received yet for this webhook.</div>}
-              <div className="flex justify-between items-center mt-6">
-                <button
-                  disabled={requestPage === 0}
-                  onClick={() => {
-                    setRequestPage((p) => {
-                      const np = Math.max(p - 1, 0);
-                      const url = new URL(window.location);
-                      url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
-                      url.searchParams.set('req_page', np + 1);
-                      window.history.replaceState({}, '', url);
-                      return np;
-                    });
-                  }}
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200 "
-                >
-                  Prev
-                </button>
 
-                <span className="text-gray-400 text-sm">
-                  Page {requestPage + 1} of {totalRequestPages}
-                </span>
+              <div className="space-y-6">
+                {requestsLoading && requests.length > 0 ? (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden min-h-[400px] flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="mt-4 text-sm text-zinc-500 font-medium">Fetching requests...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <RequestTable requests={requests} onCopy={copyToClipboard} />
+                )}
 
-                <button
-                  disabled={requests.length < requestLimit}
-                  onClick={() => {
-                    setRequestPage((p) => {
-                      const np = p + 1;
-                      const url = new URL(window.location);
-                      url.searchParams.set('webhook_endpoint', selectedWebhook.endpoint);
-                      url.searchParams.set('req_page', np + 1);
-                      window.history.replaceState({}, '', url);
-                      return np;
-                    });
-                  }}
-                  className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {webhooks.length === 0 && !loading && !selectedWebhook && (
-          <div className="text-center py-12">
-            <Globe className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No webhooks yet</h3>
-            <p className="text-gray-400 mb-4">Create your first webhook to get started</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-purplblue-600 transition-all duration-200 flex items-center space-x-2 mx-auto"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Create Webhook</span>
-            </button>
-          </div>
-        )}
-
-        {!selectedWebhook && !loading && (
-          <>
-            <div className="flex justify-between items-center mt-6">
-              <button
-                disabled={webhookPage === 0}
-                onClick={() =>
-                  setWebhookPage((p) => {
-                    const newPage = Math.max(p - 1, 0);
-                    const url = new URL(window.location);
-                    url.searchParams.set('page', newPage + 1);
-                    url.searchParams.delete('req_page');
-                    url.searchParams.delete('webhook_endpoint');
-                    window.history.replaceState({}, '', url);
-                    return newPage;
-                  })
-                }
-                className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
-              >
-                Prev
-              </button>
-
-              <span className="text-gray-400 text-sm">
-                Page {webhookPage + 1} of {totalWebhookPages}
-              </span>
-
-              <button
-                disabled={webhooks.length < webhookLimit}
-                onClick={() =>
-                  setWebhookPage((p) => {
-                    const newPage = p + 1;
-                    const url = new URL(window.location);
-                    url.searchParams.set('page', newPage + 1);
-                    url.searchParams.delete('req_page');
-                    url.searchParams.delete('webhook_endpoint');
-                    window.history.replaceState({}, '', url);
-                    return newPage;
-                  })
-                }
-                className="px-3 py-1 bg-white/10 rounded-md disabled:opacity-40 disabled:!cursor-not-allowed text-gray-200"
-              >
-                Next
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Create Webhook Modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.form
-              key="create-webhook-modal"
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-zinc-900 rounded-xl p-6 w-full max-w-md border-2 border-white/20"
-              onSubmit={createWebhook}
-            >
-              <h3 className="text-lg font-semibold text-white mb-4">Create New Webhook</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Name *</label>
-                  <input
-                    type="text"
-                    value={webhookForm.name}
-                    onChange={(e) => setWebhookForm({ ...webhookForm, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                    placeholder="My Webhook"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-                  <textarea
-                    value={webhookForm.description}
-                    onChange={(e) => setWebhookForm({ ...webhookForm, description: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                    rows="3"
-                    placeholder="Description of your webhook"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Secret{' '}
-                    <span className="text-xs">
-                      (will be treated as <code className="text-green-400">Authorization</code> header as <span className="text-blue-500">Bearer token</span>)
+                {totalRequestPages > 1 && (
+                  <div className="flex items-center justify-between pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={requestPage === 0}
+                      onClick={() => handleRequestPageChange(requestPage - 1)}
+                      className="gap-2"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+                    <span className="text-xs sm:text-sm text-zinc-500 font-medium">
+                      Page {requestPage + 1} of {totalRequestPages}
                     </span>
-                  </label>
-                  <input
-                    type="password"
-                    value={webhookForm.secret}
-                    onChange={(e) => setWebhookForm({ ...webhookForm, secret: e.target.value })}
-                    className="w-full px-3 py-2 bg-black/20 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                    placeholder="Optional webhook secret"
-                  />
-                </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={requestPage === totalRequestPages - 1}
+                      onClick={() => handleRequestPageChange(requestPage + 1)}
+                      className="gap-2"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-gray-300 hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
-                >
-                  {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                  <span>{loading ? 'Creating...' : 'Create'}</span>
-                </button>
-              </div>
-            </motion.form>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Container>
+
+      <CreateWebhookModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onSubmit={handleCreateWebhook}
+        loading={isCreating}
+      />
+
+      <Dialog open={!!webhookToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setWebhookToDelete(null); }}>
+        <DialogHeader>
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 mb-4">
+            <Trash2 className="h-5 w-5 text-red-500" />
+          </div>
+          <DialogTitle>Delete Webhook</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete{' '}
+            <span className="font-semibold text-zinc-200">"{webhookToDelete?.name}"</span>?
+            {' '}This will permanently remove the webhook and all its recorded requests.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setWebhookToDelete(null)}
+            disabled={isDeleting}
+            className="flex-1 sm:flex-none"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDeleteWebhook}
+            disabled={isDeleting}
+            className="flex-1 sm:flex-none gap-2"
+          >
+            {isDeleting ? (
+              <>
+                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 };

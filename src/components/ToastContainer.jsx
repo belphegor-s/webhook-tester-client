@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Info } from 'lucide-react';
 
 const spring = {
   type: 'spring',
@@ -39,9 +39,9 @@ const ToastContainer = ({ toasts }) => {
                 zIndex,
               }}
             >
-              {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-white" />}
+              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-white" />}
               {toast.type === 'error' && <XCircle className="w-5 h-5 text-white" />}
-              {toast.type === 'info' && <AlertCircle className="w-5 h-5 text-white" />}
+              {toast.type === 'info' && <Info className="w-5 h-5 text-white" />}
               <span className="font-medium text-sm">{toast.message}</span>
             </motion.div>
           );

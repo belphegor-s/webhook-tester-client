@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RotateCcw, ChevronLeft, ChevronRight, Globe, Plus, Trash2 } from 'lucide-react';
+import { RotateCcw, ChevronLeft, ChevronRight, Globe, Plus, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useWebhooks } from './hooks/useWebhooks';
@@ -352,9 +352,6 @@ const App = () => {
 
       <Dialog open={!!webhookToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setWebhookToDelete(null); }}>
         <DialogHeader>
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 mb-4">
-            <Trash2 className="h-5 w-5 text-red-500" />
-          </div>
           <DialogTitle>Delete Webhook</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete{' '}
@@ -363,31 +360,16 @@ const App = () => {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setWebhookToDelete(null)}
-            disabled={isDeleting}
-            className="flex-1 sm:flex-none"
-          >
+          <Button type="button" variant="ghost" onClick={() => setWebhookToDelete(null)} disabled={isDeleting}>
             Cancel
           </Button>
           <Button
             variant="danger"
             onClick={confirmDeleteWebhook}
             disabled={isDeleting}
-            className="flex-1 sm:flex-none gap-2"
+            className="min-w-[100px]"
           >
-            {isDeleting ? (
-              <>
-                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </>
-            )}
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete Webhook'}
           </Button>
         </DialogFooter>
       </Dialog>

@@ -159,6 +159,7 @@ const RequestTable = ({ requests, onCopy }) => {
         </TableBody>
       </Table>
     </div>
+  </div>
   );
 };
 

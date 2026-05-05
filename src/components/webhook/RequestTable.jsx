@@ -64,7 +64,7 @@ const RequestTable = ({ requests, onCopy }) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-mono text-xs text-zinc-400">ID: {String(request.id)}...</span>
+                      <span className="font-mono text-xs text-zinc-400">ID: {String(request.id)}</span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">

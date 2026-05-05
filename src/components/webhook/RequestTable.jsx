@@ -58,7 +58,7 @@ const RequestTable = ({ requests, onCopy }) => {
           <TableBody>
             {requests.map((request) => (
               <Fragment key={request.id}>
-                <TableRow className="cursor-pointer group" onClick={() => toggleRow(request.id)}>
+                <TableRow className="cursor-pointer group select-none" onClick={() => toggleRow(request.id)}>
                   <TableCell>
                     <Badge variant={getMethodColor(request.method)}>{request.method}</Badge>
                   </TableCell>

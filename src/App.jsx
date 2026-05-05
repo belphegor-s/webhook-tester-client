@@ -174,7 +174,7 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30 overflow-x-clip">
       <ToastContainer toasts={toasts} />
       
       <Navbar 

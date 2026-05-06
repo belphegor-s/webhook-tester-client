@@ -14,7 +14,6 @@ function verifyToken(token) {
     .update(payload)
     .digest('hex');
 
-  // timingSafeEqual requires equal-length buffers; hex digests are always 64 chars
   const sigBuf = Buffer.from(sig.length === expected.length ? sig : expected, 'hex');
   const expBuf = Buffer.from(expected, 'hex');
   if (sig.length !== expected.length || !crypto.timingSafeEqual(expBuf, sigBuf)) return false;

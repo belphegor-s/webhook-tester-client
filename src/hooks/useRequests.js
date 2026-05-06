@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { authFetch } from '../lib/auth';
 
-const API_BASE = '/api/proxy';
+const API_BASE = '/api';
 
 export function useRequests(webhookEndpoint) {
   const [requests, setRequests] = useState([]);

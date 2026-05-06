@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import crypto from 'crypto';
 
 const UPSTREAM = 'https://hooks.pixly.sh/api';
@@ -9,10 +10,7 @@ function verifyToken(token) {
   const payload = token.slice(0, dot);
   const sig = token.slice(dot + 1);
 
-  const expected = crypto
-    .createHmac('sha256', process.env.TOKEN_SECRET)
-    .update(payload)
-    .digest('hex');
+  const expected = crypto.createHmac('sha256', process.env.TOKEN_SECRET).update(payload).digest('hex');
 
   const sigBuf = Buffer.from(sig.length === expected.length ? sig : expected, 'hex');
   const expBuf = Buffer.from(expected, 'hex');

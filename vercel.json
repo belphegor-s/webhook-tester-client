@@ -25,5 +25,9 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/api/((?!auth$).*)", "destination": "/api/proxy?apiPath=$1" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

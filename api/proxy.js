@@ -34,20 +34,20 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const segments = Array.isArray(req.query.path)
-    ? req.query.path
-    : [req.query.path].filter(Boolean);
+  // apiPath injected by vercel.json rewrite, e.g. "webhooks" or "webhooks/abc123/requests"
+  const { apiPath, ...queryParams } = req.query;
+  if (!apiPath) return res.status(400).json({ error: 'Bad request' });
 
-  const upstreamUrl = new URL(`${UPSTREAM}/${segments.join('/')}`);
-  for (const [k, v] of Object.entries(req.query)) {
-    if (k !== 'path') upstreamUrl.searchParams.set(k, v);
+  const upstreamUrl = new URL(`${UPSTREAM}/${apiPath}`);
+  for (const [k, v] of Object.entries(queryParams)) {
+    upstreamUrl.searchParams.set(k, v);
   }
 
   const fetchOptions = {
     method: req.method,
     headers: {
-      'Content-Type': 'application/json',
       'x-api-key': process.env.API_KEY,
+      ...(req.method !== 'GET' && req.method !== 'HEAD' ? { 'Content-Type': 'application/json' } : {}),
     },
   };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { authFetch } from '../lib/auth';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = '/api/proxy';
 
 export function useRequests(webhookEndpoint) {
   const [requests, setRequests] = useState([]);
@@ -8,15 +9,15 @@ export function useRequests(webhookEndpoint) {
   const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
-  
+
   const pollingInterval = useRef(null);
 
   const fetchRequests = useCallback(async (showLoader = true) => {
     if (!webhookEndpoint) return;
     if (showLoader) setLoading(true);
-    
+
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/webhooks/${webhookEndpoint}/requests?limit=${limit}&offset=${page * limit}`
       );
       const data = await response.json();
@@ -34,7 +35,6 @@ export function useRequests(webhookEndpoint) {
     fetchRequests();
   }, [fetchRequests]);
 
-  // Polling logic
   useEffect(() => {
     if (!webhookEndpoint || page !== 0) {
       if (pollingInterval.current) clearInterval(pollingInterval.current);

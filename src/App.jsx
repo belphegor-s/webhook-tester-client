@@ -4,19 +4,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useWebhooks } from './hooks/useWebhooks';
 import { useRequests } from './hooks/useRequests';
+import { useAuth } from './hooks/useAuth';
 
 import { Navbar } from './components/layout/Navbar';
 import { Container } from './components/layout/Container';
 import { WebhookList } from './components/webhook/WebhookList';
 import { RequestTable } from './components/webhook/RequestTable';
 import { CreateWebhookModal } from './components/webhook/CreateWebhookModal';
+import { LoginPage } from './components/LoginPage';
 import { Button } from './components/ui/Button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/Dialog';
 import ToastContainer from './components/ToastContainer';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const WEBHOOK_BASE = import.meta.env.VITE_WEBHOOK_BASE_URL || 'https://hooks.pixly.sh';
 
 const App = () => {
+  const { isAuthenticated, login, logout } = useAuth();
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={login} />;
+  }
+
+  return <AuthenticatedApp logout={logout} />;
+};
+
+const AuthenticatedApp = ({ logout }) => {
   const [selectedWebhook, setSelectedWebhook] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -89,8 +101,7 @@ const App = () => {
   };
 
   const copyWebhookUrl = (endpoint) => {
-    const baseUrl = API_BASE ? API_BASE.replace(/\/api$/, '') : window.location.origin;
-    const url = `${baseUrl}/webhook/${endpoint}`;
+    const url = `${WEBHOOK_BASE}/webhook/${endpoint}`;
     navigator.clipboard.writeText(url);
     showToast('Webhook URL copied', 'info');
   };
@@ -161,17 +172,6 @@ const App = () => {
     window.addEventListener('popstate', syncFromUrl);
     return () => window.removeEventListener('popstate', syncFromUrl);
   }, [syncFromUrl]);
-
-  if (!API_BASE) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-zinc-900 border border-red-500/20 rounded-xl p-8 text-center">
-          <h2 className="text-xl font-bold text-white mb-2">Configuration Error</h2>
-          <p className="text-zinc-400 mb-6">VITE_API_BASE_URL is not defined. Please check your .env file.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30 overflow-x-clip">

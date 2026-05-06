@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { authFetch } from '../lib/auth';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = '/api/proxy';
 
 export function useWebhooks() {
   const [webhooks, setWebhooks] = useState([]);
@@ -12,7 +13,7 @@ export function useWebhooks() {
   const fetchWebhooks = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/webhooks?limit=${limit}&offset=${page * limit}`);
+      const response = await authFetch(`${API_BASE}/webhooks?limit=${limit}&offset=${page * limit}`);
       const data = await response.json();
       setWebhooks(data?.data ?? []);
       setTotalPages(data?.totalPages ?? 0);
@@ -26,7 +27,7 @@ export function useWebhooks() {
 
   const createWebhook = async (formData) => {
     try {
-      const response = await fetch(`${API_BASE}/webhooks`, {
+      const response = await authFetch(`${API_BASE}/webhooks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -47,7 +48,7 @@ export function useWebhooks() {
 
   const deleteWebhook = async (id) => {
     try {
-      const response = await fetch(`${API_BASE}/webhooks/${id}`, {
+      const response = await authFetch(`${API_BASE}/webhooks/${id}`, {
         method: 'DELETE',
       });
 

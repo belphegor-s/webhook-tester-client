@@ -16,7 +16,7 @@ import { Button } from './components/ui/Button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './components/ui/Dialog';
 import ToastContainer from './components/ToastContainer';
 
-const WEBHOOK_BASE = import.meta.env.VITE_WEBHOOK_BASE_URL || 'https://hooks.pixly.sh';
+const WEBHOOK_BASE = import.meta.env.VITE_WEBHOOK_BASE_URL || 'https://hooks.procd.cc';
 
 const App = () => {
   const { isAuthenticated, login, logout } = useAuth();
@@ -47,14 +47,7 @@ const AuthenticatedApp = ({ logout }) => {
     deleteWebhook: apiDeleteWebhook,
   } = useWebhooks();
 
-  const {
-    requests,
-    loading: requestsLoading,
-    totalPages: totalRequestPages,
-    page: requestPage,
-    setPage: setRequestPage,
-    fetchRequests,
-  } = useRequests(selectedWebhook?.endpoint);
+  const { requests, loading: requestsLoading, totalPages: totalRequestPages, page: requestPage, setPage: setRequestPage, fetchRequests } = useRequests(selectedWebhook?.endpoint);
 
   const showToast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random();
@@ -114,7 +107,7 @@ const AuthenticatedApp = ({ logout }) => {
   const handleSelectWebhook = (webhook) => {
     setSelectedWebhook(webhook);
     setRequestPage(0);
-    
+
     const url = new URL(window.location);
     url.searchParams.set('webhook_endpoint', webhook.endpoint);
     url.searchParams.set('req_page', 1);
@@ -154,7 +147,7 @@ const AuthenticatedApp = ({ logout }) => {
 
     if (webhooks.length > 0) {
       if (whEndpoint) {
-        const wh = webhooks.find(w => w.endpoint === whEndpoint);
+        const wh = webhooks.find((w) => w.endpoint === whEndpoint);
         if (wh) {
           setSelectedWebhook(wh);
           setRequestPage(rp - 1);
@@ -176,12 +169,8 @@ const AuthenticatedApp = ({ logout }) => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30 overflow-x-clip">
       <ToastContainer toasts={toasts} />
-      
-      <Navbar 
-        selectedWebhook={selectedWebhook} 
-        onBack={handleBackToWebhooks}
-        onNewWebhook={() => setShowCreateModal(true)}
-      />
+
+      <Navbar selectedWebhook={selectedWebhook} onBack={handleBackToWebhooks} onNewWebhook={() => setShowCreateModal(true)} />
 
       <Container className="relative">
         <AnimatePresence mode="wait">
@@ -207,9 +196,7 @@ const AuthenticatedApp = ({ logout }) => {
                     <Globe className="h-10 w-10 text-zinc-700" />
                   </div>
                   <h3 className="text-xl font-semibold text-white">No webhooks yet</h3>
-                  <p className="text-zinc-500 max-w-xs mx-auto mt-2 text-sm">
-                    Create your first webhook to start receiving and inspecting incoming requests.
-                  </p>
+                  <p className="text-zinc-500 max-w-xs mx-auto mt-2 text-sm">Create your first webhook to start receiving and inspecting incoming requests.</p>
                   <Button onClick={() => setShowCreateModal(true)} className="mt-6 gap-2">
                     <Plus className="h-4 w-4" />
                     Create Webhook
@@ -224,37 +211,19 @@ const AuthenticatedApp = ({ logout }) => {
                       ))}
                     </div>
                   ) : (
-                    <WebhookList 
-                      webhooks={webhooks}
-                      loading={webhooksLoading}
-                      onSelect={handleSelectWebhook}
-                      onDelete={handleDeleteWebhook}
-                      onCopy={copyWebhookUrl}
-                    />
+                    <WebhookList webhooks={webhooks} loading={webhooksLoading} onSelect={handleSelectWebhook} onDelete={handleDeleteWebhook} onCopy={copyWebhookUrl} />
                   )}
 
                   {totalWebhookPages > 1 && (
                     <div className="flex items-center justify-between pt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={webhookPage === 0}
-                        onClick={() => handlePageChange(webhookPage - 1)}
-                        className="gap-2"
-                      >
+                      <Button variant="outline" size="sm" disabled={webhookPage === 0} onClick={() => handlePageChange(webhookPage - 1)} className="gap-2">
                         <ChevronLeft className="h-4 w-4" />
                         <span className="hidden sm:inline">Previous</span>
                       </Button>
                       <span className="text-xs sm:text-sm text-zinc-500 font-medium">
                         Page {webhookPage + 1} of {totalWebhookPages}
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={webhookPage === totalWebhookPages - 1}
-                        onClick={() => handlePageChange(webhookPage + 1)}
-                        className="gap-2"
-                      >
+                      <Button variant="outline" size="sm" disabled={webhookPage === totalWebhookPages - 1} onClick={() => handlePageChange(webhookPage + 1)} className="gap-2">
                         <span className="hidden sm:inline">Next</span>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -276,14 +245,10 @@ const AuthenticatedApp = ({ logout }) => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">{selectedWebhook.name}</h2>
-                    {requestsLoading && (
-                      <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                    )}
+                    {requestsLoading && <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />}
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-zinc-500 text-[10px] sm:text-sm">
-                    <span className="font-mono text-[9px] sm:text-xs bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 truncate max-w-full">
-                      {selectedWebhook.endpoint}
-                    </span>
+                    <span className="font-mono text-[9px] sm:text-xs bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 truncate max-w-full">{selectedWebhook.endpoint}</span>
                     <span className="hidden sm:inline text-zinc-700">•</span>
                     <span className="whitespace-nowrap">{requests.length} requests in this page</span>
                   </div>
@@ -312,26 +277,14 @@ const AuthenticatedApp = ({ logout }) => {
 
                 {totalRequestPages > 1 && (
                   <div className="flex items-center justify-between pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={requestPage === 0}
-                      onClick={() => handleRequestPageChange(requestPage - 1)}
-                      className="gap-2"
-                    >
+                    <Button variant="outline" size="sm" disabled={requestPage === 0} onClick={() => handleRequestPageChange(requestPage - 1)} className="gap-2">
                       <ChevronLeft className="h-4 w-4" />
                       <span className="hidden sm:inline">Previous</span>
                     </Button>
                     <span className="text-xs sm:text-sm text-zinc-500 font-medium">
                       Page {requestPage + 1} of {totalRequestPages}
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={requestPage === totalRequestPages - 1}
-                      onClick={() => handleRequestPageChange(requestPage + 1)}
-                      className="gap-2"
-                    >
+                    <Button variant="outline" size="sm" disabled={requestPage === totalRequestPages - 1} onClick={() => handleRequestPageChange(requestPage + 1)} className="gap-2">
                       <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -343,32 +296,25 @@ const AuthenticatedApp = ({ logout }) => {
         </AnimatePresence>
       </Container>
 
-      <CreateWebhookModal
-        open={showCreateModal}
-        onOpenChange={setShowCreateModal}
-        onSubmit={handleCreateWebhook}
-        loading={isCreating}
-      />
+      <CreateWebhookModal open={showCreateModal} onOpenChange={setShowCreateModal} onSubmit={handleCreateWebhook} loading={isCreating} />
 
-      <Dialog open={!!webhookToDelete} onOpenChange={(open) => { if (!open && !isDeleting) setWebhookToDelete(null); }}>
+      <Dialog
+        open={!!webhookToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setWebhookToDelete(null);
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Delete Webhook</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete{' '}
-            <span className="font-semibold text-zinc-200">"{webhookToDelete?.name}"</span>?
-            {' '}This will permanently remove the webhook and all its recorded requests.
+            Are you sure you want to delete <span className="font-semibold text-zinc-200">"{webhookToDelete?.name}"</span>? This will permanently remove the webhook and all its recorded requests.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setWebhookToDelete(null)} disabled={isDeleting}>
             Cancel
           </Button>
-          <Button
-            variant="danger"
-            onClick={confirmDeleteWebhook}
-            disabled={isDeleting}
-            className="min-w-[100px]"
-          >
+          <Button variant="danger" onClick={confirmDeleteWebhook} disabled={isDeleting} className="min-w-[100px]">
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete Webhook'}
           </Button>
         </DialogFooter>

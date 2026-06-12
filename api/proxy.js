@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import crypto from 'crypto';
 
-const UPSTREAM = 'https://hooks.pixly.sh/api';
+const UPSTREAM = 'https://hooks.procd.cc/api';
 
 function verifyToken(token) {
   if (!token) return false;
